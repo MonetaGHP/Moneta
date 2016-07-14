@@ -91,9 +91,9 @@ class rgb(object):
 		self.ans = "R:",R,"G:",G,"B:",B
 		return self.ans	
 	def colour(self,R, G, B):
-		self.R = 100-self.R
-		self.G = 100-self.G
-		self.B = 100-self.B
+		self.R = 100-int(self.R)
+		self.G = 100-int(self.G)
+		self.B = 100-int(self.B)
 		self.RED.ChangeDutyCycle(self.R)
 		self.GREEN.ChangeDutyCycle(self.G)
 		self.BLUE.ChangeDutyCycle(self.B)
@@ -101,11 +101,12 @@ class rgb(object):
 		self.R = lst[0]
 		self.G = lst[1]
 		self.B = lst[2]
-		self.R = 100-self.R
-		self.G = 100-self.G
-		self.B = 100-self.B
+		self.R = 100-int(self.R)
+		self.G = 100-int(self.G)
+		self.B = 100-int(self.B)
 		self.RED.ChangeDutyCycle(self.R)
 		self.GREEN.ChangeDutyCycle(self.G)
+
 		self.BLUE.ChangeDutyCycle(self.B)
 	def wave():
 		for i in range(0, 720, 5):  
@@ -161,7 +162,7 @@ class lcd(object):
 		self.lcd_byte(0x0C,self.LCD_CMD) # 001100 Display On,Cursor Off, Blink Off 
 		self.lcd_byte(0x28,self.LCD_CMD) # 101000 Data length, number of lines, font size
 		self.lcd_byte(0x01,self.LCD_CMD) # 000001 Clear display
-		#time.sleep(self.E_DELAY)
+		time.sleep(self.E_DELAY)
 		self.lcd_byte(0x01, self.LCD_CMD)
 	
 	def lcd_byte(self,bits, mode):
@@ -175,7 +176,7 @@ class lcd(object):
 		# High bits
 		self.bus.write_byte(self.I2C_ADDR, self.bits_high)
 		self.lcd_toggle_enable(self.bits_high)
-		
+
 		# Low bits
 		self.bus.write_byte(self.I2C_ADDR, self.bits_low)
 		self.lcd_toggle_enable(self.bits_low)
@@ -230,7 +231,7 @@ class task(object):
 		if not MUTE:
 			subprocess.call(["espeak",str(self.text)])
 	def read(self):
-		self.isNew = False
+		#self.isNew = False
 		RGB.colourM(self.color)
 		self.printToLCD()
 		self.speak()
@@ -239,6 +240,8 @@ class task(object):
 		return self.color
 	def isNewTask(self):
 		return self.isNew
+	def getData(self):
+		return self.text
 
 def hasNewTasks(tasklist):
 	ans = False
@@ -266,9 +269,40 @@ def getRot():
 		return 0
 	#print frotVal
 	return frotVal
-	
+
+def getNewTask():
+	data = "FAILED"
+	colo = WHTE
+	splitchar = "^"
+	ls = [0,0,0]
+	ans = task(ls,data)
+
+	with open("tasks.txt","r") as taskFile:
+		firstline = taskFile.readline().strip()
+	try:
+		firstline = str(firstline)
+	except ValueError:
+		return ""
+	data,colo = firstline.split("^")
+	ls[0],ls[1],ls[2] = colo.split(" ")
+	ans = task(ls,data)	
+	return ans
+
+def initNewTasks():
+	n = 1
+	new = getNewTask()
+	added = False
+	while n < len(tasks) and not added and new.getData() != tasks[n].getData():
+		if tasks[n].getData() == "":
+			tasks[n] = new
+			added = True
+		else:
+			n+= 1
+
 def loop():
 	while True:
+		#print "around"
+		initNewTasks()
 		index = getRot()
 		if hasNewTasks(tasks):
 			LCD.lcd_string("    New Task!   ",LCD_LINE_1)
@@ -278,9 +312,9 @@ def loop():
 				for i in range(0,len(tasks)):
 					RGB.flash(tasks[i].getColor())
 				#subprocess.call(["espeak","New"])
-			if not GPIO.input(SWPN): #if ROT.clicked(): #Read through all the new tasks on click
-				for i in range(0,len(tasks)):
-					if tasks[i].isNewTask():
+			if not GPIO.input(SWPN): #Read through all the new tasks on click
+				for i in range(1,len(tasks)):
+					if tasks[i].isNewTask() and tasks[i].getData() != "":
 						tasks[i].read()
 				#stopall()
 		while index > 0:
@@ -306,7 +340,8 @@ def test(thing):
 	for i in range(0,len(thing)):
 		thing[i].read()
 		time.sleep(2)
-	
+
+initNewTasks()	
 #test(tasks)
 loop()
 stopall()

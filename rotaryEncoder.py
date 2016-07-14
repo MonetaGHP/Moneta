@@ -9,7 +9,7 @@ GPIO.setup(15, GPIO.IN)
 oldPinA = GPIO.input(13)
 Position = 0
 inc = 1                         
-REmax = 15
+REmax = 14
 REmin = 0                      
 
 while True:
@@ -19,11 +19,11 @@ while True:
 				if (encoderPinB == False):              # if PinB is low...
 						Position=Position+inc           # we're going clokwise
 						if Position > REmax:            # limit max value
-								Position = REmax
+								Position = REmin
 				else:                                   # otherwise... 
 						Position=Position-inc           # we're going anti-clockwise
 						if Position < REmin:            # limit min value
-								Position = REmin
+								Position = REmax
 				with open("rot.txt","w") as text_file:
 					text_file.write(str(Position))
 				print str(Position)
